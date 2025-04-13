@@ -1,32 +1,236 @@
-/* Estilos Avanzados */
-:root {
-  --primary: #2b6cb0;
-  --secondary: #4299e1;
-  --accent: #f6ad55;
-  --background: #f7fafc;
-  --text: #2d3748;
-  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+import React, { useState, useEffect } from 'react';
+import './App.css';
+
+// Datos actualizados con mejoras del Mid-Sprint 4
+const videos = [
+  { 
+    id: 1, 
+    title: 'Álgebra Básica', 
+    subject: 'Matemáticas', 
+    url: { '360p': 'https://youtu.be/basic-algebra-360', '720p': 'https://youtu.be/basic-algebra-720' },
+    subtitles: true,
+    vttUrl: '/subtitles/algebra.vtt',
+    duration: '15:30'
+  },
+  { 
+    id: 2, 
+    title: 'Fotosíntesis', 
+    subject: 'Biología', 
+    url: { '360p': 'https://youtu.be/photosynthesis-360', '720p': 'https://youtu.be/photosynthesis-720' },
+    subtitles: false,
+    duration: '20:15'
+  },
+];
+
+const pdfGuides = [
+  { 
+    id: 1, 
+    title: 'Guía de Matemáticas', 
+    url: 'https://aws.s3/guia-matematicas-v3.pdf',
+    signed: true,
+    index: ['Introducción', 'Ejercicios Básicos', 'Problemas Avanzados', 'Soluciones']
+  },
+  { 
+    id: 2, 
+    title: 'Guía de Biología', 
+    url: 'https://aws.s3/guia-biologia-v3.pdf',
+    signed: false,
+    index: ['Conceptos Clave', 'Diagramas', 'Cuestionario']
+  },
+];
+
+function App() {
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [selectedPdf, setSelectedPdf] = useState(null);
+  const [selectedQuality, setSelectedQuality] = useState('720p');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Registrar Service Worker para caché offline
+    const registerSW = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          await navigator.serviceWorker.register('/sw.js');
+          console.log('Service Worker registrado con caché dinámico');
+        } catch (error) {
+          console.error('Error en Service Worker:', error);
+        }
+      }
+      setLoading(false);
+    };
+    
+    registerSW();
+  }, []);
+
+  const PdfIndex = ({ index }) => (
+    <div className="pdf-index">
+      <h3>Índice</h3>
+      <ul>
+        {index.map((item, idx) => (
+          <li 
+            key={idx} 
+            className={activeIndex === idx ? 'active' : ''}
+            onClick={() => setActiveIndex(idx)}
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
+  const QualitySelector = ({ qualities, current, onSelect }) => (
+    <div className="quality-selector">
+      <span>Calidad:</span>
+      {Object.keys(qualities).map(quality => (
+        <button
+          key={quality}
+          className={current === quality ? 'active' : ''}
+          onClick={() => onSelect(quality)}
+        >
+          {quality}
+        </button>
+      ))}
+    </div>
+  );
+
+  const handleDownloadSubtitle = (vttUrl) => {
+    // Lógica para descargar subtítulos
+    console.log('Descargando subtítulos:', vttUrl);
+    // Implementación real usaría fetch y Blob para descarga
+  };
+
+  return (
+    <div className="App">
+      <header className="header">
+        <h1>Plataforma Educativa <span className="version">v1.4</span></h1>
+        <nav>
+          <button className="nav-btn">Videos</button>
+          <button className="nav-btn">Guías</button>
+          <button className="nav-btn">Progreso</button>
+        </nav>
+      </header>
+
+      <main>
+        {loading && (
+          <div className="loading-overlay">
+            <div className="spinner"></div>
+            <p>Optimizando para conexiones lentas...</p>
+          </div>
+        )}
+
+        {/* Sección de Videos Mejorada */}
+        <section className="video-section">
+          <h2 className="section-title">Últimos Videos Educativos</h2>
+          
+          <div className="video-grid">
+            {videos.map(video => (
+              <article 
+                key={video.id} 
+                className="video-card"
+                onClick={() => setSelectedVideo(video)}
+              >
+                <div className="thumbnail-container">
+                  <div className="thumbnail-overlay">
+                    <span className="duration">{video.duration}</span>
+                    {video.subtitles && (
+                      <button 
+                        className="subtitle-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDownloadSubtitle(video.vttUrl);
+                        }}
+                      >
+                        🎯 Descargar Subtítulos
+                      </button>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="video-info">
+                  <h3>{video.title}</h3>
+                  <div className="meta-info">
+                    <span className="subject">{video.subject}</span>
+                    <div className="quality-tags">
+                      {Object.keys(video.url).map(quality => (
+                        <span key={quality} className="quality-tag">{quality}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {selectedVideo && (
+            <div className="video-player-modal">
+              <div className="player-header">
+                <h3>{selectedVideo.title}</h3>
+                <QualitySelector 
+                  qualities={selectedVideo.url} 
+                  current={selectedQuality} 
+                  onSelect={setSelectedQuality}
+                />
+              </div>
+              
+              <div className="video-container">
+                <iframe
+                  title={`player-${selectedVideo.id}`}
+                  src={`${selectedVideo.url[selectedQuality]}?modestbranding=1`}
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Sección de PDFs con Índice Interactivo */}
+        <section className="pdf-section">
+          <h2 className="section-title">Guías de Estudio</h2>
+          
+          <div className="pdf-grid">
+            {pdfGuides.map(pdf => (
+              <article 
+                key={pdf.id} 
+                className="pdf-card"
+                onClick={() => setSelectedPdf(pdf)}
+              >
+                <div className="pdf-header">
+                  <div className="pdf-icon"></div>
+                  <div className="pdf-meta">
+                    <h3>{pdf.title}</h3>
+                    {pdf.signed && <span className="signed-badge">✔️ Certificado</span>}
+                  </div>
+                </div>
+                <div className="pdf-index-preview">
+                  <ul>
+                    {pdf.index.slice(0, 3).map((item, idx) => (
+                      <li key={idx}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {selectedPdf && (
+            <div className="pdf-viewer-modal">
+              <div className="viewer-container">
+                <PdfIndex index={selectedPdf.index} />
+                <div className="pdf-content">
+                  <iframe
+                    title="pdf-viewer"
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(selectedPdf.url)}&embedded=true`}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
+  );
 }
 
-.App {
-  max-width: 1440px;
-  margin: 0 auto;
-  background: var(--background);
-  min-height: 100vh;
-}
-
-/* Mejoras Visuales */
-.video-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  cursor: pointer;
-}
-
-.video-card:hover {
-  transform: translateY(-5px);
-  box-shadow: var(--card-shadow);
-}
-
-.thumbnail-container {
+export default App;
